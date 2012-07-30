@@ -1,0 +1,175 @@
+#!/bin/bash
+
+# MIT License
+# Copyright (C) 2012 KNURT Systeme
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# @since 07/30/2012
+
+PROGNAME=`basename $0` # get called program
+USAGE="usage: $PROGNAME [options] [URL]"
+VERSION="0.0.0"
+
+function printusage() {
+  echo $USAGE
+}
+
+function printhelp() {
+  cat << EOF
+$PROGNAME version $VERSION 
+Validate the response of a given url
+
+(c) 2012 by KNURT Systeme
+Released without warranty under the terms of the MIT license.
+
+$USAGE
+
+Options:
+  -h, --help             Print help
+  --httpcode[=VALUE]     Assert that response has given http-code header
+                         (value is 200 if nothing set)
+  --contenttype[=VALUE]  Assert that response has given content-type header
+                         (value is "text/html" if nothing set) 
+
+Examples:
+
+  Check regular response (http-code is 200) of http://google.com
+  $PROGNAME http://google.com
+
+  Check 404 for http://google.com
+  $PROGNAME http://google.com --httpcode=404
+
+  Check 404 and content-type of http://google.com
+  $PROGNAME http://google.com --httpcode=404 --contenttype="application/json"
+EOF
+}
+
+function checkGivenParams() {
+  if test $# -lt 1; then
+  	printusage
+		exit 1
+	fi
+}
+
+function checkGetHttpCode() {
+  CHECK=`curl -sL -w "%{http_code}" $URL -o /dev/null`
+  if test $CHECK == $HTTP_CODE; then
+    echo OK $URL http-code is $HTTP_CODE
+  else
+    echo FAIL $URL http-code is $CHECK not $HTTP_CODE
+    HAS_FAILURES=101
+  fi
+}
+
+function checkGetContentType() {
+  CHECK=`curl -sL -w "%{content_type}" $URL -o /dev/null`
+  if test "$CHECK" == "$CONTENT_TYPE"; then
+    echo OK $URL content-type is $CONTENT_TYPE
+  else
+    echo FAIL $URL content-type is $CHECK not $CONTENT_TYPE
+    HAS_FAILURES=102
+  fi
+}
+
+function checkPostHttpCode() {
+  echo "not implemented yet"
+  exit 1001
+  # TODO issues #1 and #2
+  CHECK=`curl -sL -w "%{http_code}" -X POST -H "Content-Type: application/json" -d @$URL -o /dev/null`;
+  if test "$CHECK" == "$HTTP_CODE"; then
+    echo OK $URL http-code is $HTTP_CODE
+  else
+    echo FAIL $URL http-code is $CHECK not $HTTP_CODE
+    HAS_FAILURES=103
+  fi
+}
+
+function checkPostContentType() {
+  echo "not implemented yet"
+  exit 1002
+  # TODO issues #1 and #2
+  CHECK=`curl -sL -w "%{content_type}" -X POST -H "Content-Type: application/json" -d @$POST_FILE $HOST:$PORT$URL -o /dev/null`;
+  if test "$CHECK" == "$CONTENT_TYPE"; then
+    echo OK $URL content-type is $CONTENT_TYPE
+  else
+    echo FAIL $URL content-type is $CHECK not $CONTENT_TYPE
+    HAS_FAILURES=104
+  fi
+}
+
+function setParams() {
+  if test "$1" != "-h" -a "$1" != "--help"; then
+    URL=$1
+    shift
+  fi
+  OPTS=`getopt -n $PROGNAME -o h --long help,httpcode:,contenttype: -- "$@"`
+  eval set -- "$OPTS"
+  # TODO issues #1 and #2
+  HAS_FAILURES=0
+  IS_GET=1
+  HTTP_CODE=200
+  CHECK_HTTP_CODE=1
+  CONTENT_TYPE="text/html"
+  CHECK_CONTENT_TYPE=0
+  PRINTHELP=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        PRINTHELP=1
+        break
+        ;;
+      --httpcode)
+        if test "$2" != ""; then
+          HTTP_CODE=$2
+        fi
+        CHECK_HTTP_CODE=1
+        break
+        ;;
+      --contenttype)
+        if test "$2" != ""; then
+          CONTENT_TYPE=$2
+        fi
+        CHECK_CONTENT_TYPE=1
+        break
+        ;;
+      --)
+        shift 
+        break
+        ;;
+      *)      
+        printusage "Invalid option '$1'!"
+        break
+        ;;
+    esac
+    shift
+  done
+}
+
+
+checkGivenParams $*
+setParams "$@"
+
+if test $PRINTHELP == 1; then
+  printhelp
+  exit 0
+fi
+
+if test $CHECK_HTTP_CODE == 1; then
+  if test $IS_GET == 1; then
+    checkGetHttpCode
+  else
+    checkPostHttpCode
+  fi
+fi
+
+if test $CHECK_CONTENT_TYPE == 1; then
+  if test $IS_GET == 1; then
+    checkGetContentType
+  else
+    checkPostContentType
+  fi
+fi
+
+if test $HAS_FAILURES != 0; then
+  exit $HAS_FAILURES
+fi
