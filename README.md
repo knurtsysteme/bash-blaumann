@@ -1,17 +1,13 @@
 bash-blaumann
 =============
 
-NOT IMPLEMENTED YET
-
 The bash-[Blaumann](http://en.wikipedia.org/wiki/Workwear) is a loose collection of useful and useless Utilities written for the [GNU Bash](http://www.gnu.org/software/bash/bash.html)
 
 urlcheck
 --------
 
-There are great solutions out there for testing url responses like jmeter or molybd. This one is a lightweight solution based on curl.
+There are great solutions out there for testing url responses like [jmeter](http://jmeter.apache.org/) or [Selenium](http://seleniumhq.org). 
 
-View help:
+This one is a lightweight solution based on curl.
 
-```
-urlcheck -h
-```
+To get an introduction download script and type `urlcheck -h`
