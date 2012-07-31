@@ -8,7 +8,7 @@ The bash-[Blaumann](http://en.wikipedia.org/wiki/Workwear) is a loose collection
 urlcheck
 --------
 
-Validate the response of a given url based on curl.
+There are great solutions out there for testing url responses like jmeter or molybd. This one is a lightweight solution based on curl.
 
 View help:
 
