@@ -7,7 +7,7 @@
 # @since 07/30/2012
 
 PROGNAME=`basename $0` # get called program
-USAGE="usage: $PROGNAME [options] [URL]"
+USAGE="usage: $PROGNAME [-h | OPTIONS] <URL>"
 VERSION="0.0.0"
 
 function printusage() {
@@ -24,124 +24,119 @@ Released without warranty under the terms of the MIT license.
 
 $USAGE
 
-Options:
-  -h, --help             Print help
-  --httpcode[=VALUE]     Assert that response has given http-code header
-                         (value is 200 if nothing set)
-  --contenttype[=VALUE]  Assert that response has given content-type header
-                         (value is "text/html" if nothing set) 
+OPTIONS:
+  -h                Print help
+  -c <httpcode>     Assert that response has given httpcode header
+  -t <contenttype>  Assert that response has given content-type header
+  -p <file>         Send the request via POST using the given file as data
 
 Examples:
-
   Check regular response (http-code is 200) of http://google.com
-  $PROGNAME http://google.com
-
+    $PROGNAME -c 200 http://google.com
   Check 404 for http://google.com
-  $PROGNAME http://google.com --httpcode=404
-
-  Check 404 and content-type of http://google.com
-  $PROGNAME http://google.com --httpcode=404 --contenttype="application/json"
+    $PROGNAME -c 404 http://google.com/no/service/here
+  Check 404 and content-type is application/json of http://google.com
+    $PROGNAME -c 404 -t "application/json" http://google.com/no/service/here
+  Check 404 on posting data
+    $PROGNAME -c 404 -p "/path/to/file/to/post.data" http://google.com/no/service/here
 EOF
 }
 
 function checkGivenParams() {
-  if test $# -lt 1; then
-  	printusage
-		exit 1
-	fi
+  if test $# -lt 1 -o `expr $# % 2` -ne 1; then
+    printusage
+    exit 1
+  fi
+  if test $# -eq 1 -a "$1" != "-h"; then
+    printusage
+    exit 2
+  fi
 }
 
 function checkGetHttpCode() {
   CHECK=`curl -sL -w "%{http_code}" $URL -o /dev/null`
   if test $CHECK == $HTTP_CODE; then
-    echo OK $URL http-code is $HTTP_CODE
+    echo OK get $URL http-code is $HTTP_CODE
   else
-    echo FAIL $URL http-code is $CHECK not $HTTP_CODE
-    HAS_FAILURES=101
+    echo FAIL get $URL http-code is $CHECK not $HTTP_CODE
+    EXIT_STATUS=1207311224
   fi
 }
 
 function checkGetContentType() {
   CHECK=`curl -sL -w "%{content_type}" $URL -o /dev/null`
   if test "$CHECK" == "$CONTENT_TYPE"; then
-    echo OK $URL content-type is $CONTENT_TYPE
+    echo OK get $URL content-type is $CONTENT_TYPE
   else
-    echo FAIL $URL content-type is $CHECK not $CONTENT_TYPE
-    HAS_FAILURES=102
+    echo FAIL get $URL content-type is $CHECK not $CONTENT_TYPE
+    EXIT_STATUS=1207311223
   fi
 }
 
 function checkPostHttpCode() {
-  echo "not implemented yet"
-  exit 1001
   # TODO issues #1 and #2
-  CHECK=`curl -sL -w "%{http_code}" -X POST -H "Content-Type: application/json" -d @$URL -o /dev/null`;
+  CHECK=`curl -sL -w "%{http_code}" -X POST -H "Content-Type: application/json" -d @$POST_FILE $URL -o /dev/null`;
   if test "$CHECK" == "$HTTP_CODE"; then
-    echo OK $URL http-code is $HTTP_CODE
+    echo OK post $URL http-code is $HTTP_CODE
   else
-    echo FAIL $URL http-code is $CHECK not $HTTP_CODE
-    HAS_FAILURES=103
+    echo FAIL post $URL http-code is $CHECK not $HTTP_CODE
+    EXIT_STATUS=1207311222
   fi
 }
 
 function checkPostContentType() {
-  echo "not implemented yet"
-  exit 1002
   # TODO issues #1 and #2
-  CHECK=`curl -sL -w "%{content_type}" -X POST -H "Content-Type: application/json" -d @$POST_FILE $HOST:$PORT$URL -o /dev/null`;
+  CHECK=`curl -sL -w "%{content_type}" -X POST -H "Content-Type: application/json" -d @$POST_FILE $URL -o /dev/null`;
   if test "$CHECK" == "$CONTENT_TYPE"; then
-    echo OK $URL content-type is $CONTENT_TYPE
+    echo OK post $URL content-type is $CONTENT_TYPE
   else
-    echo FAIL $URL content-type is $CHECK not $CONTENT_TYPE
-    HAS_FAILURES=104
+    echo FAIL post $URL content-type is $CHECK not $CONTENT_TYPE
+    EXIT_STATUS=1207311221
   fi
 }
 
 function setParams() {
-  if test "$1" != "-h" -a "$1" != "--help"; then
-    URL=$1
-    shift
-  fi
-  OPTS=`getopt -n $PROGNAME -o h --long help,httpcode:,contenttype: -- "$@"`
-  eval set -- "$OPTS"
   # TODO issues #1 and #2
-  HAS_FAILURES=0
+  URL="${@: -1}"
+  EXIT_STATUS=0
   IS_GET=1
   HTTP_CODE=200
-  CHECK_HTTP_CODE=1
+  CHECK_HTTP_CODE=0
   CONTENT_TYPE="text/html"
   CHECK_CONTENT_TYPE=0
   PRINTHELP=0
-  while [ "$#" -gt 0 ]; do
-    case "$1" in
-      -h|--help)
+  POST_FILE=0
+  while getopts "hc:t:p:" OPT; do
+    case $OPT in
+      h)
         PRINTHELP=1
-        break
         ;;
-      --httpcode)
-        if test "$2" != ""; then
-          HTTP_CODE=$2
+      p)
+        if test -r "$OPTARG"; then
+          POST_FILE=$OPTARG
+          IS_GET=0
+        else
+          echo "ERROR: File $OPTARG not readable" >&2
+          exit 1207311051
+        fi
+        ;;
+      c)
+        if test "$OPTARG" != ""; then
+          HTTP_CODE=$OPTARG
         fi
         CHECK_HTTP_CODE=1
-        break
         ;;
-      --contenttype)
-        if test "$2" != ""; then
-          CONTENT_TYPE=$2
+      t)
+        if test "$OPTARG" != ""; then
+          CONTENT_TYPE=$OPTARG
         fi
         CHECK_CONTENT_TYPE=1
-        break
         ;;
-      --)
-        shift 
-        break
-        ;;
-      *)      
-        printusage "Invalid option '$1'!"
-        break
+      \\?)
+        printusage
+        exit 1207311145
         ;;
     esac
-    shift
   done
 }
 
@@ -170,6 +165,4 @@ if test $CHECK_CONTENT_TYPE == 1; then
   fi
 fi
 
-if test $HAS_FAILURES != 0; then
-  exit $HAS_FAILURES
-fi
+exit $EXIT_STATUS

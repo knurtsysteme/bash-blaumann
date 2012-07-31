@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# test urlcheck
+#
+# assert response on localhost with content type text/html.
+#
+# @since 07/31/2012
+
+if test ! -x ../urlcheck; then
+  echo "../urlcheck is not executable file" >&2
+  exit 1207311226
+fi
+
+# test invalid option
+TESTNUM=1
+if test `../urlcheck -V | grep -i usage | wc -l` -ne 1; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
+
+TESTNUM=2
+../urlcheck localhost -c 200
+if test $? != 0; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
+
+TESTNUM=3
+../urlcheck -c 200 -t "text/html" localhost
+if test $? != 0; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
+
+# assert two checks
+TESTNUM=4
+ROWS=`../urlcheck -c 200 -t "text/html" localhost | wc -l`
+if test $ROWS != 2; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
+
+# assert fail
+TESTNUM=5
+../urlcheck -c 300 -t "text/html" localhost > /tmp/testurlcheck.tmp
+ROWS=`cat /tmp/testurlcheck.tmp | grep FAIL | wc -l`
+if test $ROWS != 1; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
+
+# sending some idiot post
+TESTNUM=6
+../urlcheck -p /tmp/testurlcheck.tmp -t "text/html" localhost
+if test $? != 0; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
+
+# sending some idiot post assert two checks
+TESTNUM=7
+ROWS=`../urlcheck -p /tmp/testurlcheck.tmp -t "text/html" localhost | wc -l`
+if test $ROWS != 1; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
+
+# sending some idiot post assert one fail
+TESTNUM=8
+../urlcheck -p /tmp/testurlcheck.tmp -t "application/json" localhost > /tmp/testurlcheck.tmp
+ROWS=`cat /tmp/testurlcheck.tmp | grep FAIL | wc -l`
+if test $ROWS != 1; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
+
+# show help
+TESTNUM=9
+../urlcheck -h > /tmp/testurlcheck.tmp
+ROWS=`cat /tmp/testurlcheck.tmp | grep KNURT | wc -l`
+if test $ROWS != 1; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
+

@@ -1,0 +1,7 @@
+*.settings
+*.project
+.DS_Store
+nbactions.xml
+nb-configuration.xml
+profiles.xml
+C:*
