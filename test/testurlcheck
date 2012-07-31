@@ -16,7 +16,7 @@ TESTNUM=1
 if test `../urlcheck -V | grep -i usage | wc -l` -ne 1; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
 
 TESTNUM=2
-../urlcheck localhost -c 200
+../urlcheck -c 200 localhost
 if test $? != 0; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
 
 TESTNUM=3
@@ -55,4 +55,9 @@ TESTNUM=9
 ../urlcheck -h > /tmp/testurlcheck.tmp
 ROWS=`cat /tmp/testurlcheck.tmp | grep KNURT | wc -l`
 if test $ROWS != 1; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
+
+# send with header
+TESTNUM=10
+../urlcheck -H "Content-Type: application/json" -c 200 localhost
+if test $? != 0; then echo "FAIL: $TESTNUM" >&2; exit $TESTNUM; fi;
 

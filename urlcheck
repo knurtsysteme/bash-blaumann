@@ -8,7 +8,7 @@
 
 PROGNAME=`basename $0` # get called program
 USAGE="usage: $PROGNAME [-h | OPTIONS] <URL>"
-VERSION="0.0.0"
+VERSION="0.0.1"
 
 function printusage() {
   echo $USAGE
@@ -25,10 +25,12 @@ Released without warranty under the terms of the MIT license.
 $USAGE
 
 OPTIONS:
-  -h                Print help
   -c <httpcode>     Assert that response has given httpcode header
-  -t <contenttype>  Assert that response has given content-type header
+  -h                Print help
+  -H <header>       (HTTP) Extra header to use when getting a web page. 
+                    Same as -H parameter on man curl.
   -p <file>         Send the request via POST using the given file as data
+  -t <contenttype>  Assert that response has given content-type header
 
 Examples:
   Check regular response (http-code is 200) of http://google.com
@@ -54,7 +56,7 @@ function checkGivenParams() {
 }
 
 function checkGetHttpCode() {
-  CHECK=`curl -sL -w "%{http_code}" $URL -o /dev/null`
+  CHECK=`curl -sL -w "%{http_code}" -H "$HEADER" $URL -o /dev/null`
   if test $CHECK == $HTTP_CODE; then
     echo OK get $URL http-code is $HTTP_CODE
   else
@@ -64,7 +66,7 @@ function checkGetHttpCode() {
 }
 
 function checkGetContentType() {
-  CHECK=`curl -sL -w "%{content_type}" $URL -o /dev/null`
+  CHECK=`curl -sL -w "%{content_type}" -H "$HEADER" $URL -o /dev/null`
   if test "$CHECK" == "$CONTENT_TYPE"; then
     echo OK get $URL content-type is $CONTENT_TYPE
   else
@@ -74,8 +76,7 @@ function checkGetContentType() {
 }
 
 function checkPostHttpCode() {
-  # TODO issues #1 and #2
-  CHECK=`curl -sL -w "%{http_code}" -X POST -H "Content-Type: application/json" -d @$POST_FILE $URL -o /dev/null`;
+  CHECK=`curl -sL -w "%{http_code}" -X POST -H "$HEADER" -d @$POST_FILE $URL -o /dev/null`;
   if test "$CHECK" == "$HTTP_CODE"; then
     echo OK post $URL http-code is $HTTP_CODE
   else
@@ -85,8 +86,7 @@ function checkPostHttpCode() {
 }
 
 function checkPostContentType() {
-  # TODO issues #1 and #2
-  CHECK=`curl -sL -w "%{content_type}" -X POST -H "Content-Type: application/json" -d @$POST_FILE $URL -o /dev/null`;
+  CHECK=`curl -sL -w "%{content_type}" -X POST -H "$HEADER" -d @$POST_FILE $URL -o /dev/null`;
   if test "$CHECK" == "$CONTENT_TYPE"; then
     echo OK post $URL content-type is $CONTENT_TYPE
   else
@@ -96,9 +96,9 @@ function checkPostContentType() {
 }
 
 function setParams() {
-  # TODO issues #1 and #2
   URL="${@: -1}"
   EXIT_STATUS=0
+  HEADER=""
   IS_GET=1
   HTTP_CODE=200
   CHECK_HTTP_CODE=0
@@ -106,10 +106,13 @@ function setParams() {
   CHECK_CONTENT_TYPE=0
   PRINTHELP=0
   POST_FILE=0
-  while getopts "hc:t:p:" OPT; do
+  while getopts "hc:t:p:H:" OPT; do
     case $OPT in
       h)
         PRINTHELP=1
+        ;;
+      H)
+        HEADER=$OPTARG
         ;;
       p)
         if test -r "$OPTARG"; then
@@ -141,7 +144,7 @@ function setParams() {
 }
 
 
-checkGivenParams $*
+checkGivenParams "$@"
 setParams "$@"
 
 if test $PRINTHELP == 1; then
